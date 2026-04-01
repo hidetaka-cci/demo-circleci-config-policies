@@ -1,75 +1,65 @@
-# This is a template CircleCI rollback config
-# that shows how to use deploy markers to track deployments.
-# You can edit this template to add your custom rollback logic.
+# .circleci/rollback.yml
 
 version: 2.1
 
+orbs:
+  circleci-cli: circleci/circleci-cli@0.1.9
+
+workflows:
+  rollback:
+    jobs:
+      # 1. Deploy Marker: PENDING を記録
+      - plan-rollback
+      # 2. 対象バージョンのポリシーを再適用
+      - rollback-policy:
+          context: circleci-hidetaka-pat
+          requires:
+            - plan-rollback
+      # 3. Deploy Marker: SUCCESS を記録
+      - finalize-rollback:
+          requires:
+            - rollback-policy
+
 jobs:
-  rollback-component:
+  # Environment CLI で plan（PENDING 状態にする）
+  plan-rollback:
     docker:
       - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Plan rollback
+          command: |
+            circleci run release plan \
+              --environment-name=${ENVIRONMENT_NAME} \
+              --component-name=${COMPONENT_NAME} \
+              --target-version=${TARGET_VERSION} \
+              --rollback
     environment:
       COMPONENT_NAME: << pipeline.deploy.component_name >>
       NAMESPACE: << pipeline.deploy.namespace >>
       ENVIRONMENT_NAME: << pipeline.deploy.environment_name >>
       TARGET_VERSION: << pipeline.deploy.target_version >>
+
+  # Local CLI（orb）で対象バージョンの policy を push
+  rollback-policy:
+    executor: circleci-cli/default
+    resource_class: small
     steps:
       - checkout
-      - attach_workspace:
-          at: . 
-
-      # This step will create a new deploy with PENDING status
-      # that will show up in the deploys tab in the UI                     
       - run:
-          name: Plan release of deploy release smoke test
-          command: |
-            circleci run release plan  \
-              --environment-name=${ENVIRONMENT_NAME} \
-              --namespace=${NAMESPACE} \
-              --component-name=${COMPONENT_NAME} \
-              --target-version=${TARGET_VERSION} \
-              --rollback
-
+          name: Checkout target version
+          command: git checkout << pipeline.deploy.target_version >>
       - run:
-          name: Perform rollback
-          command:
-            # Add here your custom logic to perform the rollback
+          name: Push previous policy bundle
+          command: circleci policy push ./config-policies --no-prompt --owner-id $CIRCLECI_ORG_ID
 
-      # These last two steps update the PENDING deployment marker 
-      # to SUCCESS or FAILED, based on the outcome of the job.
-      - run:
-          name: Update planned release to SUCCESS
-          command: |
-            circleci run release update \
-              --status=SUCCESS  
-          when: on_success
-      - run:
-          name: Update planned release to FAILED
-          command: |
-            circleci run release update \
-             --status=FAILED \
-          when: on_fail  
-
-  # This job handles the cancellation of the rollback deploy marker 
-  # if the rollback job is canceled
-  cancel-rollback:
+  # Environment CLI で update（SUCCESS にする）
+  finalize-rollback:
     docker:
       - image: cimg/base:current
-    steps:                 
+    resource_class: small
+    steps:
       - run:
-          name: Update planned release to CANCELED
-          command: |
-            circleci run release update \
-             --status=CANCELED         
-
-workflows:
-  rollback:
-    jobs:
-      - rollback-component
-      - cancel-rollback:
-          requires:
-            - rollback-component:
-              - canceled
-          filters:
-            branches:
-              only: main
+          name: Mark rollback succeeded
+          command: circleci run release update --status=SUCCESS
