@@ -1,0 +1,52 @@
+version: 2.1
+
+orbs:
+  circleci-cli: circleci/circleci-cli@0.1.9
+
+workflows:
+  main-workflow:
+    jobs:
+      - test-policy-bundle:
+          context: circleci-hidetaka-pat       # Step 10 で作成した Context 名に置き換える
+      - diff-policy-bundle:
+          context: circleci-hidetaka-pat
+          requires:
+            - test-policy-bundle    # テストが通ってから diff
+          filters:
+            branches:
+              ignore: main
+      - push-policy-bundle:
+          context: circleci-hidetaka-pat
+          requires:
+            - test-policy-bundle    # テストが通ってから push
+          filters:
+            branches:
+              only: main
+
+jobs:
+  test-policy-bundle:
+    executor: circleci-cli/default
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Test policy bundle
+          command: circleci policy test ./config-policies
+
+  diff-policy-bundle:
+    executor: circleci-cli/default
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Diff policy bundle
+          command: circleci policy diff ./config-policies --owner-id $CIRCLECI_ORG_ID
+
+  push-policy-bundle:
+    executor: circleci-cli/default
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Push policy bundle
+          command: circleci policy push ./config-policies --no-prompt --owner-id $CIRCLECI_ORG_ID
