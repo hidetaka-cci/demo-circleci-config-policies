@@ -1,19 +1,24 @@
 # すべてのポリシーは org パッケージで定義する
 package org
 
-policy_name["example"]
+import future.keywords
 
-# check_version ルールを有効化し、違反時にビルドを停止（hard_fail）する
-enable_hard["check_version"]
+policy_name["cimg_base_current"]
 
-# version チェックの定義
-check_version = reason {
-    not input.version
-    reason := "version must be defined"
-} {
-    not is_number(input.version)
-    reason := "version must be a number"
-} {
-    not input.version >= 2.1
-    reason := sprintf("version must be at least 2.1 but got %v", [input.version])
+# 違反時にパイプラインをブロックする（hard_fail）
+enable_hard["require_cimg_base_current"]
+
+# cimg/base を使っている場合、タグが current でなければ違反
+require_cimg_base_current[image] = reason {
+    some image in docker_images
+    startswith(image, "cimg/base:")
+    image != "cimg/base:current"
+    reason := sprintf("%s: cimg/base を使う場合は :current タグを指定してください", [image])
+}
+
+# config.yml から全 Docker イメージを抽出するヘルパー
+docker_images := {image |
+    walk(input, [path, value])
+    path[_] == "docker"
+    image := value[_].image
 }
