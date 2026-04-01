@@ -48,5 +48,20 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Plan policy deployment
+          command: |
+            circleci run release plan policy-push \
+              --environment-name=org-policy \
+              --component-name=config-policies \
+              --target-version=${CIRCLE_SHA1:0:7}
+      - run:
           name: Push policy bundle
           command: circleci policy push ./config-policies --no-prompt --owner-id $CIRCLECI_ORG_ID
+      - run:
+          name: Mark deployment succeeded
+          command: circleci run release update policy-push --status=SUCCESS
+          when: on_success
+      - run:
+          name: Mark deployment failed
+          command: circleci run release update policy-push --status=FAILED
+          when: on_fail
