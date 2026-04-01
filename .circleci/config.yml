@@ -2,16 +2,10 @@ version: 2.1
 jobs:
   hello:
     docker:
-      - image: cimg/node:22.0
+      - image: cimg/base:2024.01    # ← ここが違反
     steps:
       - checkout
       - run: echo "Hello"
-  build:
-    docker:
-      - image: cimg/node:22.0
-    steps:
-      - checkout
-      - run: node -v
 workflows:
   main:
     jobs:
