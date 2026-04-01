@@ -23,7 +23,7 @@ test_cimg_current:
         status: SOFT_FAIL
         soft_failures:
           - rule: require_cimg_current
-            reason: "cimg/base:2024.01: CircleCI cimg イメージは :current タグを指定してください"
+            reason: "cimg/base:2024.01: CircleCI cimg イメージは :current または lts を含むタグを指定してください"
 
     # cimg/node もピン留めなら SOFT_FAIL
     pinned_node:
@@ -37,7 +37,7 @@ test_cimg_current:
         status: SOFT_FAIL
         soft_failures:
           - rule: require_cimg_current
-            reason: "cimg/node:22.0: CircleCI cimg イメージは :current タグを指定してください"
+            reason: "cimg/node:22.0: CircleCI cimg イメージは :current または lts を含むタグを指定してください"
 
     # cimg/node:current → PASS
     node_current:
@@ -46,6 +46,28 @@ test_cimg_current:
           build:
             docker:
               - image: cimg/node:current
+      decision:
+        <<: *root
+        status: PASS
+
+    # cimg/node:lts → PASS
+    node_lts:
+      input:
+        jobs:
+          build:
+            docker:
+              - image: cimg/node:lts
+      decision:
+        <<: *root
+        status: PASS
+
+    # タグに lts を含む → PASS
+    node_lts_suffix:
+      input:
+        jobs:
+          build:
+            docker:
+              - image: cimg/node:20.10-lts
       decision:
         <<: *root
         status: PASS

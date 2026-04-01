@@ -68,9 +68,12 @@ jobs:
     resource_class: small
     steps:
       - run:
-          name: Log policy deployment to Deploys Timeline
+          name: Plan policy deployment
           command: |
-            circleci run release log \
+            circleci run release plan policy-push \
               --environment-name=org-policy \
               --component-name=config-policies \
               --target-version=${CIRCLE_SHA1:0:7}
+      - run:
+          name: Mark deployment succeeded
+          command: circleci run release update policy-push --status=SUCCESS
