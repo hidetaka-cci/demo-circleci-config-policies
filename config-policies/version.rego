@@ -3,18 +3,18 @@ package org
 
 import future.keywords
 
-policy_name["cimg_base_current"]
+policy_name["cimg_current"]
 
 # soft_fail: 違反してもパイプラインは止めず、ログに記録するだけ
-enable_rule["require_cimg_base_current"]
-soft_fail["require_cimg_base_current"]
+enable_rule["require_cimg_current"]
+soft_fail["require_cimg_current"]
 
-# cimg/base を使っている場合、タグが current でなければ違反
-require_cimg_base_current[image] = reason {
+# cimg/* イメージは :current タグのみ許可（例: cimg/node:current, cimg/base:current）
+require_cimg_current[image] = reason {
     some image in docker_images
-    startswith(image, "cimg/base:")
-    image != "cimg/base:current"
-    reason := sprintf("%s: cimg/base を使う場合は :current タグを指定してください", [image])
+    startswith(image, "cimg/")
+    not endswith(image, ":current")
+    reason := sprintf("%s: CircleCI cimg イメージは :current タグを指定してください", [image])
 }
 
 # config.yml から全 Docker イメージを抽出するヘルパー

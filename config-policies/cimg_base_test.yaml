@@ -1,5 +1,5 @@
 # cimg/base:current を使っている場合 → PASS
-test_cimg_base_current:
+test_cimg_current:
   input:
     jobs:
       build:
@@ -8,11 +8,11 @@ test_cimg_base_current:
   decision: &root
     status: PASS
     enabled_rules:
-      - require_cimg_base_current
+      - require_cimg_current
 
   cases:
-    # cimg/base の古いタグを使っている場合 → HARD_FAIL
-    pinned_version:
+    # cimg/base のピン留めタグ → SOFT_FAIL
+    pinned_base:
       input:
         jobs:
           build:
@@ -22,16 +22,41 @@ test_cimg_base_current:
         <<: *root
         status: SOFT_FAIL
         soft_failures:
-          - rule: require_cimg_base_current
-            reason: "cimg/base:2024.01: cimg/base を使う場合は :current タグを指定してください"
+          - rule: require_cimg_current
+            reason: "cimg/base:2024.01: CircleCI cimg イメージは :current タグを指定してください"
 
-    # cimg/base 以外のイメージ → PASS（対象外なので違反しない）
-    other_image:
+    # cimg/node もピン留めなら SOFT_FAIL
+    pinned_node:
       input:
         jobs:
           build:
             docker:
               - image: cimg/node:22.0
+      decision:
+        <<: *root
+        status: SOFT_FAIL
+        soft_failures:
+          - rule: require_cimg_current
+            reason: "cimg/node:22.0: CircleCI cimg イメージは :current タグを指定してください"
+
+    # cimg/node:current → PASS
+    node_current:
+      input:
+        jobs:
+          build:
+            docker:
+              - image: cimg/node:current
+      decision:
+        <<: *root
+        status: PASS
+
+    # cimg 以外のイメージ → PASS（対象外）
+    other_image:
+      input:
+        jobs:
+          build:
+            docker:
+              - image: node:22
       decision:
         <<: *root
         status: PASS
