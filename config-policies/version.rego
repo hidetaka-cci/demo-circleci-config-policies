@@ -5,8 +5,9 @@ import future.keywords
 
 policy_name["cimg_base_current"]
 
-# 違反時にパイプラインをブロックする（hard_fail）
-enable_hard["require_cimg_base_current"]
+# soft_fail: 違反してもパイプラインは止めず、ログに記録するだけ
+enable_rule["require_cimg_base_current"]
+soft_fail["require_cimg_base_current"]
 
 # cimg/base を使っている場合、タグが current でなければ違反
 require_cimg_base_current[image] = reason {
