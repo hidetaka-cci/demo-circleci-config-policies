@@ -21,7 +21,7 @@ test_cimg_base_current:
       decision:
         <<: *root
         status: SOFT_FAIL
-        hard_failures:
+        soft_failures:
           - rule: require_cimg_base_current
             reason: "cimg/base:2024.01: cimg/base を使う場合は :current タグを指定してください"
 
