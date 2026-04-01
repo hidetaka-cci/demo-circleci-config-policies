@@ -1,0 +1,37 @@
+# cimg/base:current を使っている場合 → PASS
+test_cimg_base_current:
+  input:
+    jobs:
+      build:
+        docker:
+          - image: cimg/base:current
+  decision: &root
+    status: PASS
+    enabled_rules:
+      - require_cimg_base_current
+
+  cases:
+    # cimg/base の古いタグを使っている場合 → HARD_FAIL
+    pinned_version:
+      input:
+        jobs:
+          build:
+            docker:
+              - image: cimg/base:2024.01
+      decision:
+        <<: *root
+        status: HARD_FAIL
+        hard_failures:
+          - rule: require_cimg_base_current
+            reason: "cimg/base:2024.01: cimg/base を使う場合は :current タグを指定してください"
+
+    # cimg/base 以外のイメージ → PASS（対象外なので違反しない）
+    other_image:
+      input:
+        jobs:
+          build:
+            docker:
+              - image: cimg/node:22.0
+      decision:
+        <<: *root
+        status: PASS
