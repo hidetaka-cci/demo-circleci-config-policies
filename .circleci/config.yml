@@ -16,4 +16,6 @@ workflows:
   main:
     jobs:
       - hello
+  test:
+    jobs:
       - build
