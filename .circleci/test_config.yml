@@ -7,23 +7,30 @@ workflows:
   main-workflow:
     jobs:
       - test-policy-bundle:
-          context: circleci-hidetaka-pat       # Step 10 で作成した Context 名に置き換える
+          context: circleci-hidetaka-pat
       - diff-policy-bundle:
           context: circleci-hidetaka-pat
           requires:
-            - test-policy-bundle    # テストが通ってから diff
+            - test-policy-bundle
           filters:
             branches:
               ignore: main
       - push-policy-bundle:
           context: circleci-hidetaka-pat
           requires:
-            - test-policy-bundle    # テストが通ってから push
+            - test-policy-bundle
+          filters:
+            branches:
+              only: main
+      - log-policy-deployment:
+          requires:
+            - push-policy-bundle
           filters:
             branches:
               only: main
 
 jobs:
+  # すべてのブランチで実行: ポリシーのテスト
   test-policy-bundle:
     executor: circleci-cli/default
     resource_class: small
@@ -33,6 +40,7 @@ jobs:
           name: Test policy bundle
           command: circleci policy test ./config-policies
 
+  # main 以外のブランチで実行: リモートとの差分確認
   diff-policy-bundle:
     executor: circleci-cli/default
     resource_class: small
@@ -42,26 +50,27 @@ jobs:
           name: Diff policy bundle
           command: circleci policy diff ./config-policies --owner-id $CIRCLECI_ORG_ID
 
+  # main ブランチのみ: ポリシーを組織に push
   push-policy-bundle:
     executor: circleci-cli/default
     resource_class: small
     steps:
       - checkout
       - run:
-          name: Plan policy deployment
+          name: Push policy bundle
+          command: circleci policy push ./config-policies --no-prompt --owner-id $CIRCLECI_ORG_ID
+
+  # main ブランチのみ: push 成功後に Deploy Marker を記録
+  # Environment CLI (circleci-agent) が必要なため cimg/base を使用
+  log-policy-deployment:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Log policy deployment to Deploys Timeline
           command: |
-            circleci run release plan policy-push \
+            circleci run release log \
               --environment-name=org-policy \
               --component-name=config-policies \
               --target-version=${CIRCLE_SHA1:0:7}
-      - run:
-          name: Push policy bundle
-          command: circleci policy push ./config-policies --no-prompt --owner-id $CIRCLECI_ORG_ID
-      - run:
-          name: Mark deployment succeeded
-          command: circleci run release update policy-push --status=SUCCESS
-          when: on_success
-      - run:
-          name: Mark deployment failed
-          command: circleci run release update policy-push --status=FAILED
-          when: on_fail
