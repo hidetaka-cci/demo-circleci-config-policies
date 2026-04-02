@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   circleci-cli: circleci/circleci-cli@0.1.9
+  slack: circleci/slack@5.0
 
 workflows:
   main-workflow:
@@ -28,6 +29,11 @@ workflows:
           filters:
             branches:
               only: main
+
+  send-notification:
+    jobs:
+      - notify:
+          context: private-slack
 
 jobs:
   # すべてのブランチで実行: ポリシーのテスト
@@ -77,3 +83,25 @@ jobs:
       - run:
           name: Mark deployment succeeded
           command: circleci run release update policy-push --status=SUCCESS
+
+  notify:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - slack/notify:
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "plain_text",
+                      "text": "*This is a text notification*",
+                      "emoji": true
+                    }
+                  ]
+                }
+              ]
+            }
+          event: always
