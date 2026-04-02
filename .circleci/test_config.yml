@@ -10,14 +10,18 @@ workflows:
       - test-policy-bundle:
           context: circleci-hidetaka-pat
       - diff-policy-bundle:
-          context: circleci-hidetaka-pat
+          context:
+            - circleci-hidetaka-pat
+            - private-slack
           requires:
             - test-policy-bundle
           filters:
             branches:
               ignore: main
       - push-policy-bundle:
-          context: circleci-hidetaka-pat
+          context:
+            - circleci-hidetaka-pat
+            - private-slack
           requires:
             - test-policy-bundle
           filters:
@@ -29,11 +33,6 @@ workflows:
           filters:
             branches:
               only: main
-
-  send-notification:
-    jobs:
-      - notify:
-          context: private-slack
 
 jobs:
   # すべてのブランチで実行: ポリシーのテスト
@@ -55,6 +54,43 @@ jobs:
       - run:
           name: Diff policy bundle
           command: circleci policy diff ./config-policies --owner-id $CIRCLECI_ORG_ID
+      - slack/notify:
+          event: pass
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "plain_text",
+                      "text": "*Policy diff:* succeeded",
+                      "emoji": true
+                    }
+                  ]
+                }
+              ]
+            }
+      - when:
+          condition: on_fail
+          steps:
+            - slack/notify:
+                event: fail
+                custom: |
+                  {
+                    "blocks": [
+                      {
+                        "type": "section",
+                        "fields": [
+                          {
+                            "type": "plain_text",
+                            "text": "*Policy diff:* failed",
+                            "emoji": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
 
   # main ブランチのみ: ポリシーを組織に push
   push-policy-bundle:
@@ -65,6 +101,43 @@ jobs:
       - run:
           name: Push policy bundle
           command: circleci policy push ./config-policies --no-prompt --owner-id $CIRCLECI_ORG_ID
+      - slack/notify:
+          event: pass
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "plain_text",
+                      "text": "*Policy push:* succeeded",
+                      "emoji": true
+                    }
+                  ]
+                }
+              ]
+            }
+      - when:
+          condition: on_fail
+          steps:
+            - slack/notify:
+                event: fail
+                custom: |
+                  {
+                    "blocks": [
+                      {
+                        "type": "section",
+                        "fields": [
+                          {
+                            "type": "plain_text",
+                            "text": "*Policy push:* failed",
+                            "emoji": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
 
   # main ブランチのみ: push 成功後に Deploy Marker を記録
   # Environment CLI (circleci-agent) が必要なため cimg/base を使用
@@ -83,25 +156,3 @@ jobs:
       - run:
           name: Mark deployment succeeded
           command: circleci run release update policy-push --status=SUCCESS
-
-  notify:
-    docker:
-      - image: cimg/base:current
-    steps:
-      - slack/notify:
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "plain_text",
-                      "text": "*This is a text notification*",
-                      "emoji": true
-                    }
-                  ]
-                }
-              ]
-            }
-          event: always
