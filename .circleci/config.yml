@@ -2,7 +2,7 @@ version: 2.1
 jobs:
   hello:
     docker:
-      - image: cimg/php:8.4.26    # 2026-10-21 修正前のパッチタグ（検証用）
+      - image: cimg/php:8.4.27    # 2026-10-21 修正後のパッチタグ（検証用）
     steps:
       - checkout
       - run: php -v
